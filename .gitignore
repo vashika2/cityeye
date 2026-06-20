@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pt
+runs/
+.idea/
+*.mp4
+.streamlit/

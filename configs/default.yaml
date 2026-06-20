@@ -1,0 +1,34 @@
+project:
+  name: "cityeye"
+  city: "generic"
+
+model:
+  backbone: "yolov8n"
+  device: "cuda"
+
+tasks:
+  detection:
+    confidence: 0.4
+    iou_threshold: 0.5
+  congestion:
+    thresholds:
+      free_flow: 5
+      moderate: 15
+      dense: 30
+  anomaly:
+    stopped_vehicle_frames: 30
+    min_movement_pixels: 5.0
+  violation:
+    helmet_aspect_ratio_threshold: 0.6
+
+inference:
+  source: "data/sample.mp4"
+  output_dir: "runs/inference"
+  fps_target: 10
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+
+dashboard:
+  port: 8501
