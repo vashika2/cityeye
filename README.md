@@ -1,4 +1,4 @@
-# CityEye — AI-Powered Urban Traffic Intelligence
+## CityEye — AI-Powered Urban Traffic Intelligence
 
 CityEye turns any city's existing CCTV infrastructure into an intelligent traffic monitoring system. It classifies congestion, tracks vehicles, flags violations, and detects anomalies — all from standard video feeds, with zero new hardware required.
 
