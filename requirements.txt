@@ -9,5 +9,5 @@ uvicorn>=0.24.0
 streamlit>=1.28.0
 plotly>=5.18.0
 pandas>=2.0.0
-lapx>=0.5.5
+lap>=0.4.0
 pyyaml>=6.0
