@@ -7,3 +7,9 @@ runs/
 .idea/
 *.mp4
 .streamlit/
+.DS_Store
+**/.DS_Store
+wandb/
+*.ckpt
+*.onnx
+notebooks/.ipynb_checkpoints/
