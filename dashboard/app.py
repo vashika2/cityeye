@@ -2,7 +2,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
 import pandas as pd
@@ -19,7 +21,8 @@ st.set_page_config(page_title="CityEye — Traffic Intelligence", layout="wide")
 st.title("CityEye")
 st.caption("AI-powered urban traffic intelligence — works on any city's existing CCTV feed")
 
-cfg = OmegaConf.load("configs/default.yaml")
+cfg_path = ROOT_DIR / "configs" / "default.yaml"
+cfg = OmegaConf.load(str(cfg_path))
 
 # --- Sidebar controls ---
 st.sidebar.header("Configuration")
