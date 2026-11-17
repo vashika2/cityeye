@@ -2,7 +2,7 @@ import torch
 import lightning as L
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
-from src.models.cityeye import CityEyeModel, build_model
+from src.models.multitask import CityEyeModel, build_model
 from src.losses.multitask_loss import CityEyeLoss
 
 
