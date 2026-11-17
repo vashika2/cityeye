@@ -12,4 +12,5 @@ runs/
 wandb/
 *.ckpt
 *.onnx
-notebooks/.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/*.iml
+.idea/
