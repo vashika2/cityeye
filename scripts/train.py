@@ -11,7 +11,7 @@ from src.training.trainer import CityEyeTrainer
 from src.datasets.traffic_dataset import TrafficDataModule
 
 
-def train(cfg_path="configs/default.yaml"):
+def train(cfg_path="configs/multitask.yaml"):
     cfg = OmegaConf.load(cfg_path)
     print(f"Training CityEye | Backbone: {cfg.model.backbone} | Batch: {cfg.training.batch_size} | Epochs: {cfg.training.epochs}")
     L.seed_everything(42)
@@ -40,6 +40,6 @@ def train(cfg_path="configs/default.yaml"):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/default.yaml")
+    parser.add_argument("--config", default="configs/multitask.yaml")
     args = parser.parse_args()
     train(args.config)

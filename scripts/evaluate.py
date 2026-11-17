@@ -46,7 +46,7 @@ def evaluate(cfg_path, checkpoint_path):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/default.yaml")
+    parser.add_argument("--config", default="configs/multitask.yaml")
     parser.add_argument("--checkpoint", required=True)
     args = parser.parse_args()
     evaluate(args.config, args.checkpoint)
