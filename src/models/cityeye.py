@@ -51,7 +51,24 @@ class CityEye:
                 self.congestion_state = level
                 self.pending_level, self.pending_frames = None, 0
         return self.congestion_state
-
+    def reset(self):
+        """Clear all per-stream state: smoothing, anomaly history and the tracker."""
+        self.count_window.clear()
+        self.congestion_state = None
+        self.pending_level = None
+        self.pending_frames = 0
+        self.anomaly_tracker = AnomalyTracker(
+            stopped_frames_threshold=self.cfg.tasks.anomaly.stopped_vehicle_frames,
+            min_movement_px=self.cfg.tasks.anomaly.min_movement_pixels,
+        )
+        # Start ByteTrack with no known tracks
+        predictor = getattr(self.model, "predictor", None)
+        trackers = getattr(predictor, "trackers", None)
+        if trackers and all(hasattr(t, "reset") for t in trackers):
+            for t in trackers:
+                t.reset()
+        else:
+            self.model.predictor = None
     def process_frame(self, frame, frame_id: int, timestamp: float) -> FrameResult:
         result = FrameResult(frame_id=frame_id, timestamp=timestamp)
 
