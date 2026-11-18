@@ -1,3 +1,6 @@
+from collections import deque
+from statistics import median
+
 import torch
 from ultralytics import YOLO
 
@@ -21,6 +24,34 @@ class CityEye:
             min_movement_px=cfg.tasks.anomaly.min_movement_pixels,
         )
 
+        # Congestion smoothing: median over a window, plus a hold time before
+        # the displayed level is allowed to change.
+        cong = cfg.tasks.congestion
+        self.count_window = deque(maxlen=cong.get("smoothing_window", 15))
+        self.hold_frames = cong.get("hold_frames", 20)
+        self.congestion_state = None
+        self.pending_level = None
+        self.pending_frames = 0
+
+    def _stable_congestion(self, count: int) -> str:
+        self.count_window.append(count)
+        level = classify_congestion(
+            median(self.count_window), self.cfg.tasks.congestion.thresholds
+        )
+        if self.congestion_state is None:
+            self.congestion_state = level
+        elif level == self.congestion_state:
+            self.pending_level, self.pending_frames = None, 0
+        else:
+            if level == self.pending_level:
+                self.pending_frames += 1
+            else:
+                self.pending_level, self.pending_frames = level, 1
+            if self.pending_frames >= self.hold_frames:
+                self.congestion_state = level
+                self.pending_level, self.pending_frames = None, 0
+        return self.congestion_state
+
     def process_frame(self, frame, frame_id: int, timestamp: float) -> FrameResult:
         result = FrameResult(frame_id=frame_id, timestamp=timestamp)
 
@@ -43,7 +74,7 @@ class CityEye:
                 ))
 
         result.vehicle_count = sum(1 for d in result.detections if d.class_id in COUNTABLE_IDS)
-        result.congestion_level = classify_congestion(result.vehicle_count, self.cfg.tasks.congestion.thresholds)
+        result.congestion_level = self._stable_congestion(result.vehicle_count)
         result.violations = detect_helmet_violations(
             result.detections, self.cfg.tasks.violation.helmet_aspect_ratio_threshold
         )
