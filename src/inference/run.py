@@ -52,7 +52,7 @@ def run_inference(cfg, on_event=None, write_video=True, max_frames=None):
                     print(f"Writing annotated video to: {out_path}")
                 writer.write(annotated)
 
-            if frame_id % 30 == 0:
+            if frame_id % 6 == 0:
                 print(f"  frame {frame_id} | {result.congestion_level} | "
                       f"{result.vehicle_count} vehicles | "
                       f"{len(result.violations)} violations | "

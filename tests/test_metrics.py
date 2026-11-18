@@ -73,9 +73,8 @@ def test_untracked_detections_are_ignored():
         assert t.update([det(tid=None)]) == []
 
 
-# ---------- known weaknesses (xfail until fixed) ----------
+# ---------- stalled-vehicle tracker: behaviour that used to be wrong ----------
 
-@pytest.mark.xfail(reason="compares to previous frame, so slow creeping counts as stopped")
 def test_slowly_creeping_car_is_not_flagged():
     t = AnomalyTracker(30, 5.0)
     box = (100, 100, 200, 180)
@@ -85,15 +84,38 @@ def test_slowly_creeping_car_is_not_flagged():
             flagged = True
     assert not flagged
 
-@pytest.mark.xfail(reason="alerts every frame once the threshold is passed")
-def test_alert_is_not_repeated_every_frame():
+def test_stall_is_reported_as_new_only_once():
     t = AnomalyTracker(30, 5.0)
-    alerts = sum(len(t.update([det()])) for _ in range(100))
-    assert alerts == 1
+    results = [t.update([det()]) for _ in range(100)]
+    assert sum(1 for r in results for a in r if a["new"]) == 1
 
-@pytest.mark.xfail(reason="state for vanished tracks is never cleaned up")
+def test_stalled_vehicle_stays_active_for_overlays():
+    t = AnomalyTracker(30, 5.0)
+    results = [t.update([det()]) for _ in range(100)]
+    assert all(len(r) == 1 for r in results[30:])
+
 def test_state_does_not_grow_forever():
     t = AnomalyTracker(30, 5.0)
     for i in range(1000):                      # 1000 different vehicles, each seen once
         t.update([det(tid=i)])
-    assert len(t._prev_positions) < 100
+    assert len(t._tracks) < 100
+
+def test_vehicle_that_drives_off_and_stops_again_is_reported_again():
+    t = AnomalyTracker(30, 5.0)
+    box = (100, 100, 200, 180)
+    for _ in range(40):
+        t.update([det(box=box)])
+    assert t.update([det(box=shifted(box, 300))]) == []      # drives away, alert clears
+    new_events = 0
+    for _ in range(40):
+        new_events += sum(1 for a in t.update([det(box=shifted(box, 300))]) if a["new"])
+    assert new_events == 1
+
+def test_box_jitter_is_tolerated_on_large_vehicles():
+    t = AnomalyTracker(30, 5.0)
+    flagged = False
+    for i in range(60):                        # 15 px jitter on a 400 px wide box
+        box = (100 + (15 if i % 2 else 0), 100, 500 + (15 if i % 2 else 0), 300)
+        if t.update([det(box=box)]):
+            flagged = True
+    assert flagged

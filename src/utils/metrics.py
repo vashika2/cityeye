@@ -66,36 +66,67 @@ def detect_helmet_violations(detections: List[Detection], aspect_threshold: floa
 
 
 class AnomalyTracker:
-    """Stateful tracker across frames — flags vehicles stopped too long."""
+    """
+    Flags vehicles that stay in one place for too long.
 
-    def __init__(self, stopped_frames_threshold: int, min_movement_px: float):
+    Movement is measured from the spot where the vehicle first stopped (its
+    anchor), not from the previous frame, so slowly crawling traffic is not
+    mistaken for a stalled vehicle. The allowed wobble scales with box size,
+    so near and far vehicles are treated alike.
+
+    update() returns every vehicle that is currently stalled, so overlays can
+    keep drawing it. Each entry has "new": True only on the first frame of that
+    stall, so counting events means counting the new ones.
+    """
+
+    WATCHED = ("car", "bus", "truck")
+
+    def __init__(self, stopped_frames_threshold: int, min_movement_px: float,
+                 size_ratio: float = 0.05, forget_after_frames: int = 60):
         self.threshold = stopped_frames_threshold
         self.min_movement = min_movement_px
-        self._stopped_counts: Dict[int, int] = {}
-        self._prev_positions: Dict[int, Tuple[float, float]] = {}
+        self.size_ratio = size_ratio
+        self.forget_after = forget_after_frames
+        self._frame = 0
+        self._tracks: Dict[int, dict] = {}
 
     def update(self, detections: List[Detection]) -> List[dict]:
-        anomalies = []
+        self._frame += 1
+        active = []
         for d in detections:
-            if d.track_id is None:
+            if d.track_id is None or d.class_name not in self.WATCHED:
                 continue
-            cx, cy = (d.bbox[0] + d.bbox[2]) / 2, (d.bbox[1] + d.bbox[3]) / 2
+            x1, y1, x2, y2 = d.bbox
+            cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+            radius = max(self.min_movement, self.size_ratio * max(x2 - x1, y2 - y1))
 
-            if d.track_id in self._prev_positions:
-                px, py = self._prev_positions[d.track_id]
-                moved = ((cx - px) ** 2 + (cy - py) ** 2) ** 0.5
-                if moved > self.min_movement:
-                    self._stopped_counts[d.track_id] = 0
-                else:
-                    self._stopped_counts[d.track_id] = self._stopped_counts.get(d.track_id, 0) + 1
+            tr = self._tracks.get(d.track_id)
+            if tr is None:
+                self._tracks[d.track_id] = {
+                    "anchor": (cx, cy), "still": 0, "alerted": False, "seen": self._frame,
+                }
+                continue
 
-            self._prev_positions[d.track_id] = (cx, cy)
+            tr["seen"] = self._frame
+            ax, ay = tr["anchor"]
+            if ((cx - ax) ** 2 + (cy - ay) ** 2) ** 0.5 > radius:
+                tr["anchor"], tr["still"], tr["alerted"] = (cx, cy), 0, False
+            else:
+                tr["still"] += 1
 
-            if (self._stopped_counts.get(d.track_id, 0) >= self.threshold
-                    and d.class_name in ("car", "bus", "truck")):
-                anomalies.append({
+            if tr["still"] >= self.threshold:
+                active.append({
                     "type": "stopped_vehicle",
                     "track_id": d.track_id,
                     "bbox": d.bbox,
+                    "new": not tr["alerted"],
                 })
-        return anomalies
+                tr["alerted"] = True
+
+        self._prune()
+        return active
+
+    def _prune(self):
+        cutoff = self._frame - self.forget_after
+        for tid in [t for t, tr in self._tracks.items() if tr["seen"] < cutoff]:
+            del self._tracks[tid]
